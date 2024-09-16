@@ -87,9 +87,10 @@ class CausalActionsFilter:
 
         if any('kind' in col for col in causal_table.columns) or any('value' in col for col in causal_table.columns):
             start_group = len(self.indexes_to_discr)
-            for n in range(self.n_groups):
-                index = start_group + n * 2
-                ok_indexes_obs.extend([index, index + 1])
+            if self.n_groups is not None:
+                for n in range(self.n_groups):
+                    index = start_group + n * 2
+                    ok_indexes_obs.extend([index, index + 1])
 
         self.ok_indexes_obs = torch.tensor(ok_indexes_obs, device=self.device)
 
