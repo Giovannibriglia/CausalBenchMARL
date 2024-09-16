@@ -77,7 +77,7 @@ off_policy_init_random_frames: 0
 
 evaluation: True
 # Whether to render the evaluation (if rendering is available)
-render: True
+render: False
 # Frequency of evaluation in terms of collected frames (this should be a multiple of on/off_policy_collected_frames_per_batch)
 evaluation_interval: 120_000
 # Number of episodes that evaluation is run on
