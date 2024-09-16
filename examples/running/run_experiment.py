@@ -24,14 +24,12 @@ if __name__ == "__main__":
     model_config = MlpConfig.get_from_yaml()
     critic_model_config = MlpConfig.get_from_yaml()
 
-    seed_input = int(input('Set seed: '))
-
     experiment = Experiment(
         task=task,
         algorithm_config=algorithm_config,
         model_config=model_config,
         critic_model_config=critic_model_config,
-        seed=seed_input,
+        seed=0,
         config=experiment_config,
     )
     experiment.run()
