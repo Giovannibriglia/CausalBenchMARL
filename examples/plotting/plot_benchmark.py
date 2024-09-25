@@ -57,16 +57,26 @@ def run_benchmark() -> List[str]:
 
 
 if __name__ == "__main__":
-    experiment_json_files = [
-        '../running/causaliql_navigation_causalmlp__c40617a0_24_09_07-12_39_57/causaliql_navigation_causalmlp__c40617a0_24_09_07-12_39_57.json'
-                  ]
+    experiment_json_files = []
+    folder_path = "../running/"
+    key1 = "causaliql_give_way_causalmlp"
+    key2 = "iql_give_way_mlp"
+
+    # Walk through the folder and subfolders
+    for root, dirs, files in os.walk(folder_path):
+        for file_name in files:
+            if (file_name.endswith(".json") and key1 in file_name) or (
+                file_name.endswith(".json") and key2 in file_name
+            ):
+                # Get the full file path
+                full_path = os.path.join(root, file_name)
+                experiment_json_files.append(full_path)
+
     # Uncomment this to rerun the benchmark that generates the files
     # experiment_json_files = run_benchmark()
 
     raw_dict = load_and_merge_json_dicts(experiment_json_files)
 
-    # Load and process experiment outputs
-    # raw_dict = load_and_merge_json_dicts(experiments_json_files)
     processed_data = Plotting.process_data(raw_dict)
     (
         environment_comparison_matrix,
@@ -84,12 +94,12 @@ if __name__ == "__main__":
         sample_effeciency_matrix=sample_efficiency_matrix
     )
     Plotting.task_sample_efficiency_curves(
-        processed_data=processed_data, env="vmas", task="navigation"
+        processed_data=processed_data, env="vmas", task="give_way"
     )
     try:
         Plotting.probability_of_improvement(
             environment_comparison_matrix,
-            algorithms_to_compare=[["mappo", "qmix"]],
+            algorithms_to_compare=[["causaliql", "iql"]],
         )
     except:
         pass

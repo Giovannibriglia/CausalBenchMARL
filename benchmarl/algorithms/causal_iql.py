@@ -6,6 +6,7 @@
 
 from dataclasses import dataclass, MISSING
 from typing import Dict, Iterable, Tuple, Type
+import time
 
 from tensordict import TensorDictBase
 from tensordict.nn import TensorDictModule, TensorDictSequential
@@ -32,14 +33,13 @@ class CausalIql(Algorithm):
 
         self.delay_value = delay_value
         self.loss_function = loss_function
-        self.action_mask_spec = True
 
     #############################
     # Overridden abstract methods
     #############################
 
     def _get_loss(
-            self, group: str, policy_for_loss: TensorDictModule, continuous: bool
+        self, group: str, policy_for_loss: TensorDictModule, continuous: bool
     ) -> Tuple[LossModule, bool]:
         if continuous:
             raise NotImplementedError("Iql is not compatible with continuous actions.")
@@ -70,7 +70,7 @@ class CausalIql(Algorithm):
         return {"loss": loss.parameters()}
 
     def _get_policy_for_loss(
-            self, group: str, model_config: ModelConfig, continuous: bool
+        self, group: str, model_config: ModelConfig, continuous: bool
     ) -> TensorDictModule:
         n_agents = len(self.group_map[group])
         logits_shape = [
@@ -101,12 +101,10 @@ class CausalIql(Algorithm):
             device=self.device,
             action_spec=self.action_spec,
         )
-
         if self.action_mask_spec is not None:
             action_mask_key = (group, "action_mask")
         else:
             action_mask_key = None
-
         value_module = QValueModule(
             action_value_key=(group, "action_value"),
             action_mask_key=action_mask_key,
@@ -118,13 +116,11 @@ class CausalIql(Algorithm):
             spec=self.action_spec[group, "action"],
             action_space=None,
         )
-
         return TensorDictSequential(actor_module, value_module)
 
     def _get_policy_for_collection(
-            self, policy_for_loss: TensorDictModule, group: str, continuous: bool
+        self, policy_for_loss: TensorDictModule, group: str, continuous: bool
     ) -> TensorDictModule:
-
         if self.action_mask_spec is not None:
             action_mask_key = (group, "action_mask")
         else:
@@ -171,6 +167,10 @@ class CausalIql(Algorithm):
             )
 
         return batch
+
+    #####################
+    # Custom new methods
+    #####################
 
     #####################
     # Custom new methods

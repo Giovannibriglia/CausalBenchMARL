@@ -4,7 +4,7 @@
 #  LICENSE file in the root directory of this source tree.
 #
 
-from benchmarl.algorithms import  IqlConfig
+from benchmarl.algorithms import IqlConfig
 from benchmarl.environments import VmasTask
 from benchmarl.experiment import Experiment, ExperimentConfig
 from benchmarl.models.mlp import MlpConfig

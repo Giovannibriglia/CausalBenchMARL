@@ -6,7 +6,7 @@
 
 from typing import Callable, Dict, List, Optional
 
-from torchrl.data import CompositeSpec
+from torchrl.data import CompositeSpec, BinaryDiscreteTensorSpec
 from torchrl.envs import EnvBase
 from torchrl.envs.libs.vmas import VmasEnv
 
@@ -85,6 +85,125 @@ class VmasTask(Task):
 
     def action_mask_spec(self, env: EnvBase) -> Optional[CompositeSpec]:
         return None
+
+    def observation_spec(self, env: EnvBase) -> CompositeSpec:
+        observation_spec = env.unbatched_observation_spec.clone()
+        for group in self.group_map(env):
+            if "info" in observation_spec[group]:
+                del observation_spec[(group, "info")]
+        return observation_spec
+
+    def info_spec(self, env: EnvBase) -> Optional[CompositeSpec]:
+        info_spec = env.unbatched_observation_spec.clone()
+        for group in self.group_map(env):
+            del info_spec[(group, "observation")]
+        for group in self.group_map(env):
+            if "info" in info_spec[group]:
+                return info_spec
+        else:
+            return None
+
+    def action_spec(self, env: EnvBase) -> CompositeSpec:
+        return env.unbatched_action_spec
+
+    @staticmethod
+    def env_name() -> str:
+        return "vmas"
+
+
+class MaskVmasTask(Task):
+    """Enum for VMAS tasks."""
+
+    BALANCE = None
+    SAMPLING = None
+    NAVIGATION = None
+    TRANSPORT = None
+    REVERSE_TRANSPORT = None
+    WHEEL = None
+    DISPERSION = None
+    MULTI_GIVE_WAY = None
+    DROPOUT = None
+    GIVE_WAY = None
+    WIND_FLOCKING = None
+    PASSAGE = None
+    JOINT_PASSAGE = None
+    JOINT_PASSAGE_SIZE = None
+    BALL_PASSAGE = None
+    BALL_TRAJECTORY = None
+    BUZZ_WIRE = None
+    FLOCKING = None
+    DISCOVERY = None
+    SIMPLE_ADVERSARY = None
+    SIMPLE_CRYPTO = None
+    SIMPLE_PUSH = None
+    SIMPLE_REFERENCE = None
+    SIMPLE_SPEAKER_LISTENER = None
+    SIMPLE_SPREAD = None
+    SIMPLE_TAG = None
+    SIMPLE_WORLD_COMM = None
+
+    def get_env_fun(
+        self,
+        num_envs: int,
+        continuous_actions: bool,
+        seed: Optional[int],
+        device: DEVICE_TYPING,
+    ) -> Callable[[], EnvBase]:
+        return lambda: VmasEnv(
+            scenario=self.name.lower(),
+            num_envs=num_envs,
+            continuous_actions=continuous_actions,
+            seed=seed,
+            device=device,
+            categorical_actions=True,
+            clamp_actions=True,
+            **self.config,
+        )
+
+    def supports_continuous_actions(self) -> bool:
+        return True
+
+    def supports_discrete_actions(self) -> bool:
+        return True
+
+    def has_render(self, env: EnvBase) -> bool:
+        return True
+
+    def max_steps(self, env: EnvBase) -> int:
+        return self.config["max_steps"]
+
+    def group_map(self, env: EnvBase) -> Dict[str, List[str]]:
+        if hasattr(env, "group_map"):
+            return env.group_map
+        return {"agents": [agent.name for agent in env.agents]}
+
+    def state_spec(self, env: EnvBase) -> Optional[CompositeSpec]:
+        return None
+
+    def action_mask_spec(self, env: EnvBase) -> Optional[CompositeSpec]:
+        num_agents = len(self.group_map(env)["agents"])
+        num_actions = env.action_spec.space.n
+        action_mask_spec = BinaryDiscreteTensorSpec(
+            n=num_actions,
+            shape=(
+                num_agents,
+                num_actions,
+            ),  # env.unbatched_action_spec["agents"]["action"].shape,
+            device=env.device,
+        )
+
+        # Create the CompositeSpec with the key ("group", "action_mask")
+        composite_spec = CompositeSpec(
+            {
+                "agents": CompositeSpec(
+                    {"action_mask": action_mask_spec}, shape=(num_agents, num_actions)
+                )
+            },
+            device=env.device,
+            shape=(num_agents,),
+        )
+
+        return composite_spec
 
     def observation_spec(self, env: EnvBase) -> CompositeSpec:
         observation_spec = env.unbatched_observation_spec.clone()

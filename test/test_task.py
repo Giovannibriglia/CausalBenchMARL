@@ -31,7 +31,7 @@ def test_loading_tasks(task_name):
             ],
             return_hydra_config=True,
         )
-        task_name_hydra = cfg.hydra.runtime.choices.task
+        task_name_hydra = cfg.hydra.runtime.choices.task_name
         assert task_name_hydra == task_name
 
         warn_message = "TaskConfig python dataclass not foud, task is being loaded without type checks"

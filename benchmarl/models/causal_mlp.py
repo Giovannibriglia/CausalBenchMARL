@@ -12,7 +12,7 @@ from typing import Optional, Sequence, Type
 
 import torch
 from tensordict import TensorDictBase
-from torch import nn, Tensor
+from torch import nn
 from torchrl.modules import MLP, MultiAgentMLP
 
 from benchmarl.models.causality_aux import CausalActionsFilter
@@ -36,6 +36,7 @@ class CausalMlp(Model):
 
     def __init__(
         self,
+        task_name: str,
         **kwargs,
     ):
         super().__init__(
@@ -76,9 +77,10 @@ class CausalMlp(Model):
                     for _ in range(self.n_agents if not self.share_params else 1)
                 ]
             )
-        # TODO: get task_name
-        task_name = 'give_way'
-        self.causal_action_filter = CausalActionsFilter(False, task_name, device=self.device)
+        # self.causal_action_filter = None
+        self.causal_action_filter = CausalActionsFilter(
+            False, task_name, device=self.device
+        )
 
     def _perform_checks(self):
         super()._perform_checks()
@@ -115,6 +117,7 @@ class CausalMlp(Model):
             )
 
     def _forward(self, tensordict: TensorDictBase) -> TensorDictBase:
+
         # Gather in_key
         input = torch.cat([tensordict.get(in_key) for in_key in self.in_keys], dim=-1)
         in_time = time.time()
@@ -139,10 +142,16 @@ class CausalMlp(Model):
 
         tensordict.set(self.out_key, res)
 
-        actions_mask = self.causal_action_filter.get_actions(input)
-        # print(input.shape, actions_mask.shape)
-        # print(time.time()-in_time)
-        tensordict['agents'].set('action_mask', actions_mask)
+        if self.causal_action_filter is not None:
+            action_mask = self.causal_action_filter.get_action_mask(input)
+            # print(input.shape, action_mask.shape)
+            """print(
+                "Computation time for the mask: ",
+                time.time() - in_time,
+                action_mask.shape,
+            )"""
+            tensordict["agents"].set("action_mask", action_mask)
+            # print("\n Action masks: ", action_mask)
 
         return tensordict
 
@@ -159,6 +168,8 @@ class CausalMlpConfig(ModelConfig):
 
     norm_class: Type[nn.Module] = None
     norm_kwargs: Optional[dict] = None
+
+    task_name: Optional[str] = None
 
     @staticmethod
     def associated_class():
