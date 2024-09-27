@@ -76,7 +76,7 @@ class CausalMlp(Model):
                     for _ in range(self.n_agents if not self.share_params else 1)
                 ]
             )
-        # self.causal_action_filter = None
+
         self.causal_action_filter = CausalActionsFilter(
             False, task_name, device=self.device
         )
@@ -118,37 +118,58 @@ class CausalMlp(Model):
     def _forward(self, tensordict: TensorDictBase) -> TensorDictBase:
 
         # Gather in_key
-        input = torch.cat([tensordict.get(in_key) for in_key in self.in_keys], dim=-1)
+        input_ = torch.cat([tensordict.get(in_key) for in_key in self.in_keys], dim=-1)
         # in_time = time.time()
-        # Has multi-agent input dimension
+        # Has multi-agent input_ dimension
         if self.input_has_agent_dim:
-            res = self.mlp.forward(input)
+            res = self.mlp.forward(input_)
             if not self.output_has_agent_dim:
                 # If we are here the module is centralised and parameter shared.
                 # Thus the multi-agent dimension has been expanded,
                 # We remove it without loss of data
                 res = res[..., 0, :]
 
-        # Does not have multi-agent input dimension
+        # Does not have multi-agent input_ dimension
         else:
             if not self.share_params:
                 res = torch.stack(
-                    [net(input) for net in self.mlp],
+                    [net(input_) for net in self.mlp],
                     dim=-2,
                 )
             else:
-                res = self.mlp[0](input)
+                res = self.mlp[0](input_)
 
         tensordict.set(self.out_key, res)
 
         if self.causal_action_filter is not None:
-            action_mask = self.causal_action_filter.get_action_mask(input)
-            # print(input.shape, action_mask.shape)
-            """print(
-                "Computation time for the mask: ",
-                time.time() - in_time,
-                action_mask.shape,
-            )"""
+            with torch.no_grad():
+                action_mask = self.causal_action_filter.get_action_mask(input_)
+                # Check the shape of the action mask
+                expected_shape = (
+                    input_.shape[0],
+                    input_.shape[1],
+                    self.action_spec["agents"]["action"].space.n,
+                )
+                assert (
+                    action_mask.shape == expected_shape
+                ), f"Expected action mask shape {expected_shape}, but got {action_mask.shape}."
+
+                # Ensure the mask is a binary tensor (boolean)
+                assert (
+                    action_mask.dtype == torch.bool
+                ), "Action mask should be a boolean tensor."
+
+                assert (input_.shape[0] == action_mask.shape[0]) and (
+                    input_.shape[1] == action_mask.shape[1]
+                ), "Action mask has incorrect shape."
+
+                # print(input_.shape, action_mask.shape)
+                """print(
+                    "Computation time for the mask: ",
+                    time.time() - in_time,
+                    action_mask.shape,
+                )"""
+
             tensordict["agents"].set("action_mask", action_mask)
             # print("\n Action masks: ", action_mask)
 

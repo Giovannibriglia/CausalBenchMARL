@@ -7,9 +7,14 @@
 from dataclasses import dataclass, MISSING
 from typing import Dict, Iterable, Tuple, Type
 
+import torch
 from tensordict import TensorDictBase
 from tensordict.nn import TensorDictModule, TensorDictSequential
-from torchrl.data import CompositeSpec, UnboundedContinuousTensorSpec
+from torchrl.data import (
+    CompositeSpec,
+    DiscreteTensorSpec,
+    UnboundedContinuousTensorSpec,
+)
 from torchrl.modules import EGreedyModule, QValueModule
 from torchrl.objectives import DQNLoss, LossModule, ValueEstimators
 
@@ -32,6 +37,7 @@ class CausalIql(Algorithm):
 
         self.delay_value = delay_value
         self.loss_function = loss_function
+        self.setup_action_mask_spec()
 
     #############################
     # Overridden abstract methods
@@ -171,9 +177,40 @@ class CausalIql(Algorithm):
     # Custom new methods
     #####################
 
-    #####################
-    # Custom new methods
-    #####################
+    def setup_action_mask_spec(self, n_envs: int = 10):
+        """Initialize the action mask spec for all groups based on self.action_spec and n_envs."""
+        self.action_mask_spec = {}
+
+        # Loop through all groups in the action_spec and define action mask spec for each group
+        for group in self.action_spec.keys(True):
+            if (
+                isinstance(self.action_spec[group], CompositeSpec)
+                and "action" in self.action_spec[group]
+            ):
+                self.action_mask_spec[group] = self.define_action_mask_spec(
+                    group, n_envs
+                )
+
+    def define_action_mask_spec(self, group: str, n_envs: int) -> CompositeSpec:
+        """Define the action mask spec for a given group, accounting for multiple environments."""
+        # Access the 'action' spec for the group
+        action_spec = self.action_spec[group]["action"]
+
+        n_agents = action_spec.shape[0]  # Number of agents
+        n_actions = action_spec.space.n  # Number of discrete actions
+
+        # Define a spec for the action mask: binary (0 or 1), with shape (n_envs, n_agents, n_actions)
+        action_mask_spec = CompositeSpec(
+            {
+                "action_mask": DiscreteTensorSpec(
+                    n=2,  # Binary mask (valid actions 1, invalid actions 0)
+                    shape=(n_envs, n_agents, n_actions),  # Shape of the mask
+                    dtype=torch.bool,  # Boolean tensor for the mask
+                    device=self.device,  # Device (GPU/CPU)
+                )
+            }
+        )
+        return action_mask_spec
 
 
 @dataclass

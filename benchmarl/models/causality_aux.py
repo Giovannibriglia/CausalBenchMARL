@@ -1,5 +1,7 @@
 import json
+from pathlib import Path
 
+import hydra
 import numpy as np
 import pandas as pd
 import torch
@@ -11,18 +13,13 @@ class CausalActionsFilter:
     def __init__(self, ci_online: bool, task: str, **kwargs):
         self.ci_online = ci_online
         self.task_name = task.lower()
-        # TODO: better script path definition
-        script_path = __file__.replace("causality_aux.py", "causality_best")
-        script_path = script_path.replace(
-            "/MyEnv/lib/python3.10/site-packages/benchmarl-1.2.1-py3.10.egg", ""
-        )
 
+        self.last_obs_continuous = None
         self.device = kwargs.get(
             "device", "cuda" if torch.cuda.is_available() else "cpu"
         )
-        self.path_best = f"{script_path}/{self.task_name}"
 
-        self.last_obs_continuous = None
+        self.path_best = self.get_original_script_path()
 
         causal_table = pd.read_pickle(f"{self.path_best}/causal_table.pkl")
         with open(f"{self.path_best}/best_others.json", "r") as file:
@@ -43,8 +40,21 @@ class CausalActionsFilter:
                 str(s).replace("agent_0_obs_", "") for s in info["grouped_features"][1]
             ]
         )
-
+        self.n_actions = None
         self._define_action_mask_inputs(causal_table)
+
+    def get_original_script_path(self):
+        # Retrieve the original working directory before Hydra changed it
+        original_wd = hydra.utils.get_original_cwd()
+        # Construct the path to causality_best/task_name
+        causality_best_path = (
+            Path(original_wd)
+            / "benchmarl"
+            / "models"
+            / "causality_best"
+            / self.task_name
+        )
+        return causality_best_path
 
     def _define_action_mask_inputs(self, causal_table: pd.DataFrame):
         def actions_mask_filter(
@@ -246,6 +256,7 @@ class CausalActionsFilter:
 
         self.last_obs_continuous = multiple_observation_flatten
         return action_masks.view(num_envs, num_agents, -1).bool()
+
         """num_envs, num_agents, _ = multiple_observation.shape
         return torch.ones(
             (num_envs, num_agents, 9), device=self.device, dtype=torch.bool

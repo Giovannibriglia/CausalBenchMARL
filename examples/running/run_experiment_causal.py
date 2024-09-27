@@ -5,7 +5,7 @@
 #
 
 from benchmarl.algorithms import CausalIqlConfig
-from benchmarl.environments.vmas.common import MaskVmasTask
+from benchmarl.environments import VmasTask
 from benchmarl.experiment import Experiment, ExperimentConfig
 from benchmarl.models import MlpConfig
 from benchmarl.models.causal_mlp import CausalMlpConfig
@@ -17,13 +17,12 @@ if __name__ == "__main__":
     experiment_config = ExperimentConfig.get_from_yaml()
 
     # Loads from "benchmarl/conf/task/vmas/balance.yaml"
-    task = MaskVmasTask.NAVIGATION.get_from_yaml()
+    task = VmasTask.GIVE_WAY.get_from_yaml()
     task_name = task.name
     # Loads from "benchmarl/conf/algorithm/mappo.yaml"0.
     algorithm_config = CausalIqlConfig.get_from_yaml()
 
     # Loads from "benchmarl/conf/model/layers/mlp.yaml"
-    CausalMlpConfig.task = task
     model_config = CausalMlpConfig.get_from_yaml()
     model_config.task_name = task_name
     critic_model_config = MlpConfig.get_from_yaml()

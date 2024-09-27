@@ -589,6 +589,25 @@ class Experiment(CallbackNotifier):
                         done_keys=self.rollout_env.done_keys,
                     )
 
+            # Check if action_mask exists in the batch and its correctness
+            if "action_mask" in batch["agents"]:
+                action_mask = batch["agents"].get("action_mask")
+
+                # Check if the action_mask has the correct shape (n_envs, n_agents, n_actions)
+                expected_shape = (
+                    batch.shape[0],
+                    batch.shape[1],
+                    action_mask.shape[-2],
+                    self.action_spec["agents"]["action"].space.n,
+                )
+                assert (
+                    action_mask.shape == expected_shape
+                ), f"Expected action mask shape {expected_shape}, but got {action_mask.shape}."
+                # Check if the action_mask is a binary tensor (boolean)
+                assert (
+                    action_mask.dtype == torch.bool
+                ), "Action mask should be a boolean tensor."
+
             # Logging collection
             collection_time = time.time() - iteration_start
             current_frames = batch.numel()
