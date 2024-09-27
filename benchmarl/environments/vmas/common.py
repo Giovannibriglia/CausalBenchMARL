@@ -6,7 +6,7 @@
 
 from typing import Callable, Dict, List, Optional
 
-from torchrl.data import CompositeSpec, BinaryDiscreteTensorSpec
+from torchrl.data import BinaryDiscreteTensorSpec, CompositeSpec
 from torchrl.envs import EnvBase
 from torchrl.envs.libs.vmas import VmasEnv
 

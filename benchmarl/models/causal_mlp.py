@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, MISSING
 from typing import Optional, Sequence, Type
 
@@ -120,7 +119,7 @@ class CausalMlp(Model):
 
         # Gather in_key
         input = torch.cat([tensordict.get(in_key) for in_key in self.in_keys], dim=-1)
-        in_time = time.time()
+        # in_time = time.time()
         # Has multi-agent input dimension
         if self.input_has_agent_dim:
             res = self.mlp.forward(input)

@@ -6,7 +6,6 @@
 
 from dataclasses import dataclass, MISSING
 from typing import Dict, Iterable, Tuple, Type
-import time
 
 from tensordict import TensorDictBase
 from tensordict.nn import TensorDictModule, TensorDictSequential

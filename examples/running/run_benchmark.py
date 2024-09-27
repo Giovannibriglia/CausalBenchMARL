@@ -4,7 +4,7 @@
 #  LICENSE file in the root directory of this source tree.
 #
 
-from benchmarl.algorithms import MappoConfig, MasacConfig, QmixConfig, IqlConfig
+from benchmarl.algorithms import IqlConfig
 from benchmarl.benchmark import Benchmark
 from benchmarl.environments import VmasTask
 from benchmarl.experiment import ExperimentConfig
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     experiment_config = ExperimentConfig.get_from_yaml()
 
     # Loads from "benchmarl/conf/task/vmas"
-    tasks = [VmasTask.GIVE_WAY.get_from_yaml()]
+    tasks = [VmasTask.GIVE_WAY.get_from_yaml(), VmasTask.GIVE_WAY.get_from_yaml()]
 
     # Loads from "benchmarl/conf/algorithm"
     algorithm_configs = [

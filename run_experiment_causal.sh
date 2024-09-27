@@ -24,4 +24,3 @@ Xvfb :99 -screen 0 1400x900x24 > /dev/null 2>&1 &
 
 # Run the experiment using Python 3.10
 python3.10 -m run_experiment_causal
-

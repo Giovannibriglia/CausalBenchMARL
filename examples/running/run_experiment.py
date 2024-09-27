@@ -15,7 +15,7 @@ if __name__ == "__main__":
     experiment_config = ExperimentConfig.get_from_yaml()
 
     # Loads from "benchmarl/conf/task/vmas/balance.yaml"
-    task = VmasTask.GIVE_WAY.get_from_yaml()
+    task = VmasTask.NAVIGATION.get_from_yaml()
 
     # Loads from "benchmarl/conf/algorithm/mappo.yaml"
     algorithm_config = IqlConfig.get_from_yaml()
