@@ -12,7 +12,7 @@ on:
     branches: [ $default-branch , "main" ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   tests:
