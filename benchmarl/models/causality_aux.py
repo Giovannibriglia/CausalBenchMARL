@@ -205,9 +205,11 @@ class CausalActionsFilter:
             # We only expand once for the necessary batch size
             batch_size = obs_values.size(0)
 
-            # Explicit broadcasting only where necessary
+            # Expand values_obs_in_causal_table_expanded to match the second dimension of closest_indices
             values_obs_in_causal_table_expanded = (
-                self.values_obs_in_causal_table_expanded.expand(batch_size, -1, -1)
+                self.values_obs_in_causal_table_expanded.expand(
+                    batch_size, obs_values.size(1), -1
+                )
             )
 
             # Optimize the differences calculation using in-place operations where possible
@@ -216,7 +218,7 @@ class CausalActionsFilter:
             # Perform argmin operation more efficiently, keeping operations on the same device
             closest_indices = torch.argmin(differences, dim=2)
 
-            # Use gather with pre-expanded values and minimize dimension manipulation
+            # Use gather with values_obs_in_causal_table_expanded and closest_indices
             discretized_values = values_obs_in_causal_table_expanded.gather(
                 2, closest_indices.unsqueeze(2)
             ).squeeze(2)
@@ -226,7 +228,7 @@ class CausalActionsFilter:
 
             # Insert the discretized values back into the original observation shape
             discretized[:, self.ok_indexes_obs] = discretized_values
-            # print("Discretized: ", discretized.shape)
+
             return discretized
 
         def compute_action_mask(obs):
