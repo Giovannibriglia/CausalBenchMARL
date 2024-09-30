@@ -10,7 +10,6 @@ from torchrl.data import CompositeSpec
 from torchrl.envs import EnvBase, PettingZooEnv
 
 from benchmarl.environments.common import Task
-
 from benchmarl.utils import DEVICE_TYPING
 
 

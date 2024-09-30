@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import hydra
@@ -37,23 +38,35 @@ class CausalActionsFilter:
             None
             if self.n_groups is None
             else [
-                str(s).replace("agent_0_obs_", "") for s in info["grouped_features"][1]
+                int(str(s).replace("agent_0_obs_", ""))
+                for s in info["grouped_features"][1]
             ]
         )
         self.n_actions = None
         self._define_action_mask_inputs(causal_table)
 
     def get_original_script_path(self):
-        # Retrieve the original working directory before Hydra changed it
-        original_wd = hydra.utils.get_original_cwd()
-        # Construct the path to causality_best/task_name
-        causality_best_path = (
-            Path(original_wd)
-            / "benchmarl"
-            / "models"
-            / "causality_best"
-            / self.task_name
-        )
+        try:
+            # If Hydra is used, get the original working directory
+            original_wd = hydra.utils.get_original_cwd()
+
+            # Construct the path to causality_best/task_name
+            causality_best_path = (
+                Path(original_wd)
+                / "benchmarl"
+                / "models"
+                / "causality_best"
+                / self.task_name
+            )
+
+        except ValueError:
+            # If Hydra is not used, fallback to the current working directory
+            original_path = os.getcwd()
+            causality_best_path = str(original_path).replace(
+                "examples\\running",
+                f"benchmarl\\models\\causality_best\\{self.task_name}",
+            )
+
         return causality_best_path
 
     def _define_action_mask_inputs(self, causal_table: pd.DataFrame):
@@ -154,22 +167,30 @@ class CausalActionsFilter:
         self.ok_indexes_obs = torch.tensor(ok_indexes_obs, device=self.device)
 
     def get_action_mask(self, multiple_observation: torch.Tensor):
-        def validate_input(observation):
-            if not isinstance(observation, torch.Tensor):
-                raise ValueError("multiple_observation must be a tensor")
-            return observation
+        # Validate input in a single step
+        if not isinstance(multiple_observation, torch.Tensor):
+            raise ValueError("multiple_observation must be a tensor")
 
-        def calculate_delta_obs_continuous(current_obs, last_obs):
+        # Batch process delta observation for continuous values
+        def calculate_delta_obs_continuous(
+            current_obs: torch.Tensor, last_obs: torch.Tensor
+        ):
+            # return torch.sub(current_obs, last_obs, out=current_obs)
+            assert current_obs.shape == last_obs.shape, print(
+                current_obs.shape, last_obs.shape
+            )
             return current_obs - last_obs
 
         def group_obs(obs):
-            indexes_to_group = [int(i) for i in self.indexes_to_group]
             mask_ok = torch.ones(obs.shape[1], dtype=bool, device=self.device)
-            mask_ok[indexes_to_group] = False
+
+            # Now apply the mask correctly
+            mask_ok[self.indexes_to_group] = False
 
             values_ok = obs[:, mask_ok]
             values_to_group = obs[:, ~mask_ok]
 
+            # Batch process top-k to reduce redundant computation
             top_values, top_indices = torch.topk(values_to_group, self.n_groups, dim=1)
             index_value_pairs = torch.stack((top_indices.float(), top_values), dim=-1)
 
@@ -178,82 +199,103 @@ class CausalActionsFilter:
             )
 
         def discretize_obs(obs):
-            # Move obs_values to the correct device (GPU/CPU)
-            obs_values = obs[:, self.ok_indexes_obs].unsqueeze(2).to(self.device)
-            # Ensure both tensors are on the same device
+            # Select only relevant parts of the observation to avoid broadcasting unnecessary data
+            obs_values = obs[:, self.ok_indexes_obs].unsqueeze(2)
+
+            # We only expand once for the necessary batch size
+            batch_size = obs_values.size(0)
+
+            # Explicit broadcasting only where necessary
             values_obs_in_causal_table_expanded = (
-                self.values_obs_in_causal_table_expanded.to(self.device)
+                self.values_obs_in_causal_table_expanded.expand(batch_size, -1, -1)
             )
 
-            # Calculate differences
-            differences = torch.abs(obs_values - values_obs_in_causal_table_expanded)
+            # Optimize the differences calculation using in-place operations where possible
+            differences = torch.abs_(obs_values - values_obs_in_causal_table_expanded)
 
-            # Ensure there are no invalid values like NaN or Inf
-            if torch.isnan(differences).any() or torch.isinf(differences).any():
-                raise ValueError("Differences tensor contains NaN or Inf values!")
+            # Perform argmin operation more efficiently, keeping operations on the same device
+            closest_indices = torch.argmin(differences, dim=2)
 
-            # Perform argmin operation
-            closest_indices = torch.argmin(
-                differences, dim=2
-            )  # Keep this operation on the same device
+            # Use gather with pre-expanded values and minimize dimension manipulation
+            discretized_values = values_obs_in_causal_table_expanded.gather(
+                2, closest_indices.unsqueeze(2)
+            ).squeeze(2)
 
-            # Return the discretized observation
-            discretized = (
-                torch.gather(
-                    values_obs_in_causal_table_expanded.expand(
-                        obs_values.size(0), -1, -1
-                    ),
-                    2,
-                    closest_indices.unsqueeze(2),
-                )
-                .squeeze(2)
-                .to(self.device)
-            )
+            # Create a tensor with the same shape as the original `obs`
+            discretized = torch.zeros_like(obs)
 
+            # Insert the discretized values back into the original observation shape
+            discretized[:, self.ok_indexes_obs] = discretized_values
+            # print("Discretized: ", discretized.shape)
             return discretized
 
+        def compute_action_mask(obs):
+            batch_size = obs.shape[0]  # Get the batch size
+
+            # Initialize a tensor for the action masks, defaulting to all ones
+            action_masks = torch.ones(batch_size, self.n_actions, device=self.device)
+
+            # Stack all values in the causal table into a tensor
+            values_obs_stack = torch.stack(
+                [
+                    self.values_obs_in_causal_table[j][: obs.shape[1]]
+                    for j in range(len(self.indexes_obs_in_causal_table))
+                ],
+                dim=0,
+            )  # Shape: (num_entries_in_causal_table, obs_dim)
+
+            # Compare all observations in the batch with the values_obs_stack in a single operation
+            obs_expanded = obs.unsqueeze(0).expand(
+                values_obs_stack.shape[0], batch_size, obs.shape[1]
+            )  # Shape: (num_entries_in_causal_table, batch_size, obs_dim)
+            comparison = (values_obs_stack.unsqueeze(1) == obs_expanded).all(
+                dim=-1
+            )  # Shape: (num_entries_in_causal_table, batch_size)
+
+            # Find the first valid index for each observation in the batch
+            valid_indices = comparison.float().argmax(dim=0)  # Shape: (batch_size)
+
+            # Create a mask for the batch, marking where valid indices are found
+            valid_mask = comparison.sum(dim=0) > 0  # Shape: (batch_size)
+
+            # Apply the action masks from the valid indices for those that matched
+            if valid_mask.any():  # Ensure there are valid indices to avoid errors
+                selected_action_masks = self.action_masks_from_causality[
+                    valid_indices[valid_mask]
+                ].to(self.device)
+                action_masks[valid_mask] = selected_action_masks
+
+            return action_masks
+
         def process_obs(obs):
+            # print(obs.shape)
             delta_obs_cont = calculate_delta_obs_continuous(
                 obs, self.last_obs_continuous
             )
+            # print(delta_obs_cont.shape)
             grouped_obs = group_obs(delta_obs_cont) if self.n_groups else delta_obs_cont
-            return get_action_mask(discretize_obs(grouped_obs))
+            # print(grouped_obs.shape)
+            return compute_action_mask(discretize_obs(grouped_obs))
 
-        def get_action_mask(obs):
-            # Adjust the comparison to slice the first 4 elements from values_obs_in_causal_table
-            comparison = torch.stack(
-                [
-                    self.values_obs_in_causal_table[i][: obs.shape[1]] == obs[i]
-                    for i in range(len(self.indexes_obs_in_causal_table))
-                ],
-                dim=0,
-            )
-
-            valid_indices = comparison.all(dim=0).nonzero(as_tuple=True)[0]
-
-            return (
-                self.action_masks_from_causality[valid_indices[0]]
-                if len(valid_indices) > 0
-                else torch.ones(self.n_actions, device=self.device)
-            )
-
-        # multiple_observation = multiple_observation.to(self.device)
-        multiple_observation = validate_input(multiple_observation)
+        # Flatten observations for batch processing
         num_envs, num_agents, _ = multiple_observation.shape
-
         multiple_observation_flatten = multiple_observation.view(
             -1, multiple_observation.size(-1)
         )
 
-        if self.last_obs_continuous is not None:
-            action_masks = torch.stack(
-                [process_obs(obs_input) for obs_input in multiple_observation_flatten],
-            )
+        # If last continuous observations are available, process the new observations
+        if (
+            self.last_obs_continuous is not None
+            and multiple_observation_flatten.shape == self.last_obs_continuous.shape
+        ):
+            # Batch processing for multiple observations
+            action_masks = process_obs(multiple_observation_flatten)
         else:
             action_masks = torch.ones(
                 (num_envs * num_agents, self.n_actions), device=self.device
             )
-
+        # print("Action mask shape: ", action_masks.shape)
+        # Update last observations
         self.last_obs_continuous = multiple_observation_flatten
         return action_masks.view(num_envs, num_agents, -1).bool()
 

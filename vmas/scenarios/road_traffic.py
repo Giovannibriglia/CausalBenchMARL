@@ -12,7 +12,6 @@ from torch import Tensor
 
 from vmas import render_interactively
 from vmas.simulator.core import Agent, Box, World
-
 from vmas.simulator.dynamics.kinematic_bicycle import KinematicBicycle
 from vmas.simulator.scenario import BaseScenario
 from vmas.simulator.utils import Color, ScenarioUtils

@@ -12,7 +12,6 @@ from benchmarl.experiment import Experiment, ExperimentConfig
 from benchmarl.models.common import SequenceModelConfig
 from benchmarl.models.mlp import MlpConfig
 
-
 if __name__ == "__main__":
 
     model_config = SequenceModelConfig(

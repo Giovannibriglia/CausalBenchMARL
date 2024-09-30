@@ -11,6 +11,7 @@ from benchmarl.environments import VmasTask
 from benchmarl.experiment import Experiment, ExperimentConfig
 from benchmarl.experiment.callback import Callback
 from benchmarl.models.mlp import MlpConfig
+
 from tensordict import TensorDict, TensorDictBase
 
 
