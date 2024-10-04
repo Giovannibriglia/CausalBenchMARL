@@ -2,7 +2,7 @@
 
 # Hydra
 **/outputs/
-**/multirun/
+multirun
 
 # Docs
 docs/output/

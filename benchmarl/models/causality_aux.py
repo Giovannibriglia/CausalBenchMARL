@@ -250,6 +250,8 @@ class CausalActionsFilter:
             obs_expanded = obs.unsqueeze(0).expand(
                 values_obs_stack.shape[0], batch_size, obs.shape[1]
             )  # Shape: (num_entries_in_causal_table, batch_size, obs_dim)
+            # print(values_obs_stack.shape)
+            # print(obs_expanded.shape)
             comparison = (values_obs_stack.unsqueeze(1) == obs_expanded).all(
                 dim=-1
             )  # Shape: (num_entries_in_causal_table, batch_size)

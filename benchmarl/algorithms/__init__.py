@@ -3,8 +3,9 @@
 #  This source code is licensed under the license found in the
 #  LICENSE file in the root directory of this source tree.
 #
-
 from .causal_iql import CausalIql, CausalIqlConfig
+from .causal_qmix import CausalQmix, CausalQmixConfig
+from .causal_vdn import CausalVdnConfig
 from .common import Algorithm, AlgorithmConfig
 from .iddpg import Iddpg, IddpgConfig
 from .ippo import Ippo, IppoConfig
@@ -35,8 +36,12 @@ classes = [
     "MasacConfig",
     "Qmix",
     "QmixConfig",
+    "CausalQmix",
+    "CausalQmixConfig",
     "Vdn",
     "VdnConfig",
+    "CausalVdn",
+    "CausalVdnConfig",
 ]
 
 # A registry mapping "algoname" to its config dataclass
@@ -45,6 +50,8 @@ algorithm_config_registry = {
     "mappo": MappoConfig,
     "ippo": IppoConfig,
     "causal_iql": CausalIqlConfig,
+    "causal_qmix": CausalQmixConfig,
+    "causal_vdn": CausalVdnConfig,
     "maddpg": MaddpgConfig,
     "iddpg": IddpgConfig,
     "masac": MasacConfig,

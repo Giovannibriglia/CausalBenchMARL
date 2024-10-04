@@ -95,33 +95,7 @@ def load_and_merge_json_dicts(
 
 
 class Plotting:
-    """Class containing static utilities for plotting in ``marl-eval``.
-
-    Examples:
-        >>> from benchmarl.eval_results import get_raw_dict_from_multirun_folder, Plotting
-        >>> raw_dict = get_raw_dict_from_multirun_folder(
-        ... multirun_folder="some_prefix/multirun/2023-09-22/17-21-34"
-        ... )
-        >>> processed_data = Plotting.process_data(raw_dict)
-        ... (
-        ...     environment_comparison_matrix,
-        ...     sample_efficiency_matrix,
-        ... ) = Plotting.create_matrices(processed_data, env_name="vmas")
-        >>> Plotting.performance_profile_figure(
-        ...     environment_comparison_matrix=environment_comparison_matrix
-        ... )
-        >>> Plotting.aggregate_scores(
-        ...     environment_comparison_matrix=environment_comparison_matrix
-        ... )
-        >>> Plotting.environemnt_sample_efficiency_curves(
-        ...     sample_effeciency_matrix=sample_efficiency_matrix
-        ... )
-        >>> Plotting.task_sample_efficiency_curves(
-        ...     processed_data=processed_data, env="vmas", task="navigation"
-        ... )
-        >>> plt.show()
-
-    """
+    """Class containing static utilities for plotting in ``marl-eval``."""
 
     METRICS_TO_NORMALIZE = ["return"]
     METRIC_TO_PLOT = "return"
@@ -206,9 +180,13 @@ class Plotting:
 
 
 if __name__ == "__main__":
-    raw_dict = get_raw_dict_from_multirun_folder(
-        multirun_folder="/Users/matbet/PycharmProjects/BenchMARL/benchmarl/multirun/2023-09-22/17-21-34"
-    )
+    task = "navigation_and_give_way"
+
+    # Define the source and destination paths
+    source_folder = rf"C:\Users\giova\Documents\Research\BenchMARL\multirun\{task}"
+
+    raw_dict = get_raw_dict_from_multirun_folder(multirun_folder=source_folder)
+
     processed_data = Plotting.process_data(raw_dict)
     (
         environment_comparison_matrix,
@@ -225,7 +203,13 @@ if __name__ == "__main__":
         sample_effeciency_matrix=sample_efficiency_matrix
     )
 
-    Plotting.task_sample_efficiency_curves(
-        processed_data=processed_data, env="vmas", task="navigation"
-    )
+    if (
+        task != "complete"
+        and task != "navigation_and_flocking"
+        and task != "navigation_and_give_way"
+    ):
+        Plotting.task_sample_efficiency_curves(
+            processed_data=processed_data, env="vmas", task=task
+        )
+
     plt.show()
