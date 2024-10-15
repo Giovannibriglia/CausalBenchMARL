@@ -5,7 +5,7 @@ defaults:
 
 
 max_steps: 100
-n_agents: 3
+n_agents: 1
 collisions: True
 agents_with_same_goal: 1
 split_goals: False
