@@ -13,3 +13,4 @@ observe_all_goals: False
 shared_rew: False
 lidar_range: 0.35
 agent_radius: 0.1
+enforce_bounds: True

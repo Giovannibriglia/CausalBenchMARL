@@ -56,6 +56,8 @@ class BaseScenario(ABC):
         """Whether to plot a grid in the scenario rendering background. This can be changed in the :class:`~make_world` function. """
         self.grid_spacing = 0.1
         """If :class:`~plot_grid`, the distance between lines in the background grid. This can be changed in the :class:`~make_world` function. """
+        self.visualize_semidims = True
+        """Whether to display boundaries in dimension-limited environment. This can be changed in the :class:`~make_world` function. """
 
     @property
     def world(self):
@@ -110,9 +112,9 @@ class BaseScenario(ABC):
             instance which is automatically set in :class:`~world`.
 
         Examples:
-            >>> from vmas import Agent, World, Landmark, Sphere, Box
-            >>> from vmas import BaseScenario
-            >>> from vmas import Color
+            >>> from vmas.simulator.core import Agent, World, Landmark, Sphere, Box
+            >>> from vmas.simulator.scenario import BaseScenario
+            >>> from vmas.simulator.utils import Color
             >>> class Scenario(BaseScenario):
             >>>     def make_world(self, batch_dim: int, device: torch.device, **kwargs):
             ...         # Pass any kwargs you desire when creating the environment
@@ -174,7 +176,7 @@ class BaseScenario(ABC):
         Spawning at fixed positions
 
         Examples:
-            >>> from vmas import BaseScenario
+            >>> from vmas.simulator.scenario import BaseScenario
             >>> import torch
             >>> class Scenario(BaseScenario):
             >>>     def reset_world_at(self, env_index)
@@ -208,8 +210,8 @@ class BaseScenario(ABC):
         Spawning at random positions
 
         Examples:
-            >>> from vmas import BaseScenario
-            >>> from vmas import ScenarioUtils
+            >>> from vmas.simulator.scenario import BaseScenario
+            >>> from vmas.simulator.utils import ScenarioUtils
             >>> class Scenario(BaseScenario):
             >>>     def reset_world_at(self, env_index)
             >>>         ScenarioUtils.spawn_entities_randomly(
@@ -243,7 +245,7 @@ class BaseScenario(ABC):
              Union[torch.Tensor, Dict[str, torch.Tensor]]: the observation
 
         Examples:
-            >>> from vmas import BaseScenario
+            >>> from vmas.simulator.scenario import BaseScenario
             >>> import torch
             >>> class Scenario(BaseScenario):
             >>>     def observation(self, agent):
@@ -256,8 +258,8 @@ class BaseScenario(ABC):
         You can also return observations in a dictionary
 
         Examples:
-            >>> from vmas import BaseScenario
-            >>> from vmas import Color
+            >>> from vmas.simulator.scenario import BaseScenario
+            >>> from vmas.simulator.utils import Color
             >>> class Scenario(BaseScenario):
             >>>     def observation(self, agent):
             ...         return {"pos": agent.state.pos, "vel": agent.state.vel}
@@ -285,7 +287,7 @@ class BaseScenario(ABC):
              torch.Tensor: reward tensor of shape ``(self.world.batch_dim)``
 
         Examples:
-            >>> from vmas import BaseScenario
+            >>> from vmas.simulator.scenario import BaseScenario
             >>> import torch
             >>> class Scenario(BaseScenario):
             >>>     def reward(self, agent):
@@ -314,7 +316,7 @@ class BaseScenario(ABC):
             torch.Tensor: done tensor of shape ``(self.world.batch_dim)``
 
         Examples:
-            >>> from vmas import BaseScenario
+            >>> from vmas.simulator.scenario import BaseScenario
             >>> import torch
             >>> class Scenario(BaseScenario):
             >>>     def done(self):
@@ -359,12 +361,12 @@ class BaseScenario(ABC):
         Returns: A list of geometries to render for the current time step.
 
         Examples:
-            >>> from vmas import Color
-            >>> from vmas import BaseScenario
+            >>> from vmas.simulator.utils import Color
+            >>> from vmas.simulator.scenario import BaseScenario
             >>> class Scenario(BaseScenario):
             >>>     def extra_render(self, env_index):
-            >>>         from vmas import rendering
-                        color = Color.BLACK.value
+            >>>         from vmas.simulator import rendering
+            >>>         color = Color.BLACK.value
             >>>         line = rendering.Line(
             ...            (self.world.agents[0].state.pos[env_index]),
             ...            (self.world.agents[1].state.pos[env_index]),
@@ -388,8 +390,8 @@ class BaseScenario(ABC):
             agent (Agent): the agent process the action of
 
         Examples:
-            >>> from vmas import BaseScenario
-            >>> from vmas import TorchUtils
+            >>> from vmas.simulator.scenario import BaseScenario
+            >>> from vmas.simulator.utils import TorchUtils
             >>> class Scenario(BaseScenario):
             >>>     def process_action(self, agent):
             >>>         # Clamp square to circle
@@ -408,7 +410,7 @@ class BaseScenario(ABC):
         For example, you can store temporal data before letting the world step.
 
         Examples:
-            >>> from vmas import BaseScenario
+            >>> from vmas.simulator.scenario import BaseScenario
             >>> class Scenario(BaseScenario):
             >>>     def pre_step(self):
             >>>         for agent in self.world.agents:
@@ -424,7 +426,7 @@ class BaseScenario(ABC):
         For example, you can store temporal sensor data in this function.
 
         Examples:
-            >>> from vmas import BaseScenario
+            >>> from vmas.simulator.scenario import BaseScenario
             >>> class Scenario(BaseScenario):
             >>>     def post_step(self):
             >>>         for agent in self.world.agents:
