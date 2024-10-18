@@ -62,7 +62,7 @@ class Logger:
                     experiment_name=experiment_name,
                     wandb_kwargs={
                         "group": task_name,
-                        "project": "benchmarl",
+                        "project": "benchmarl_single_agent",
                         "id": experiment_name,
                     },
                 )
