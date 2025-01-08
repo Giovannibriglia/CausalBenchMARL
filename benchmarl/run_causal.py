@@ -3,8 +3,6 @@
 #  This source code is licensed under the license found in the
 #  LICENSE file in the root directory of this source tree.
 #
-import os
-from pathlib import Path
 
 import hydra
 from hydra.core.hydra_config import HydraConfig
@@ -37,9 +35,7 @@ def hydra_experiment(cfg: DictConfig) -> None:
     print(OmegaConf.to_yaml(cfg))
 
     experiment = load_experiment_from_hydra(cfg, task_name=task_name)
-    experiment.config.save_folder = Path(os.path.dirname(os.path.realpath(__file__)))
     experiment.task_name = task_name
-    experiment
     experiment.run()
 
 
