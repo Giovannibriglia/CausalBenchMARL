@@ -76,8 +76,6 @@ class Mlp(Model):
                 ]
             )
 
-        print("NON SONO CAUSALLLLLL")
-
     def _perform_checks(self):
         super()._perform_checks()
 

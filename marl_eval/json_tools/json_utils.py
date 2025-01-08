@@ -18,7 +18,7 @@ import logging
 import os
 import zipfile
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import as_completed, ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -31,7 +31,7 @@ def _read_json_files(directory: str) -> list:
     """Reads all JSON files in a directory and returns a list of JSON objects."""
     json_data = []
 
-    for root, dirs, files in os.walk(directory):
+    for root, _, files in os.walk(directory):
         for filename in files:
             if filename.endswith(".json"):
                 file_path = os.path.join(root, filename)

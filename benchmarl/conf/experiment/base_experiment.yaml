@@ -86,7 +86,7 @@ evaluation_episodes: 10
 evaluation_deterministic_actions: True
 
 # List of loggers to use, options are: wandb, csv, tensorboard, mflow
-loggers: ["wandb"]
+loggers: []
 # Create a json folder as part of the output in the format of marl-eval
 create_json: True
 
@@ -99,7 +99,7 @@ restore_file: null
 # Set it to 0 to disable checkpointing
 checkpoint_interval: 0
 # Wether to checkpoint when the experiment is done
-checkpoint_at_end: False
+checkpoint_at_end: True
 # How many checkpoints to keep. As new checkpoints are taken, temporally older checkpoints are deleted to keep this number of
 # checkpoints. The checkpoint at the end is included in this number. Set to `null` to keep all checkpoints.
 keep_checkpoints_num: 3
