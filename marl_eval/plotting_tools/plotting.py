@@ -21,8 +21,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib.figure import Figure
-from rliable import library as rly
-from rliable import metrics, plot_utils
+from mpl_toolkits.axes_grid1.inset_locator import (
+    inset_axes,
+    mark_inset,
+    zoomed_inset_axes,
+)
+from rliable import library as rly, metrics, plot_utils
 
 from marl_eval.plotting_tools.plot_utils import plot_single_task_curve
 from marl_eval.utils.data_processing_utils import (
@@ -39,13 +43,13 @@ def performance_profiles(
     metrics_to_normalize: List[str],
     legend_map: Optional[Dict[str, str]] = None,
 ) -> Figure:
-    """Produces performance profile plots.
+    """Produces performance profile plots with an inset zoom on x: [0.8, 1] and y: [0, 1].
 
     Args:
-        dictionary: Dictionary containing 2D arrays of normalised absolute metric scores
+        dictionary: Dictionary containing 2D arrays of normalized absolute metric scores
             for metric algorithm pairs.
         metric_name: Name of metric to produce plots for.
-        metrics_to_normalize: List of metrics that are normalised.
+        metrics_to_normalize: List of metrics that are normalized.
         legend_map: Dictionary that maps each algorithm to a custom legend label.
 
     Returns:
@@ -84,8 +88,8 @@ def performance_profiles(
         data_dictionary, np.linspace(0, 1, 100)
     )
 
-    # Plot score distributions
-    fig, ax = plt.subplots(ncols=1, figsize=(7, 5))
+    # Create a figure with constrained layout enabled
+    fig, ax = plt.subplots(ncols=1, figsize=(16, 9), constrained_layout=True)
     plot_utils.plot_performance_profiles(
         score_distributions,
         np.linspace(0, 1, 100),
@@ -95,6 +99,42 @@ def performance_profiles(
         ax=ax,
         legend=algorithms,
     )
+
+    # Create an inset zoom on the right-hand side
+    axins = inset_axes(
+        ax, width="50%", height="50%", loc="center"
+    )  # Adjust the size as needed
+    plot_utils.plot_performance_profiles(
+        score_distributions,
+        np.linspace(0, 1, 100),
+        performance_profile_cis=score_distributions_cis,
+        colors=dict(zip(algorithms, sns.color_palette(cc.glasbey_category10))),
+        xlabel=None,
+        ax=axins,
+        legend=None,  # No legend for the zoomed-in section
+    )
+
+    # Set limits for the zoomed-in view
+    axins.set_xlim(0.92, 1.01)  # Zoom in on the x-axis
+    axins.set_ylim(0, 1)  # Keep the y-axis from 0 to 1
+
+    # Adjust the ticks on the inset
+    axins.xaxis.set_major_locator(
+        plt.MaxNLocator(3)
+    )  # Max 3 ticks on x-axis in the inset
+    axins.yaxis.set_major_locator(
+        plt.MaxNLocator(4)
+    )  # Max 4 ticks on y-axis in the inset
+
+    # Add a rectangle in the main plot to indicate the zoomed-in area
+    mark_inset(ax, axins, loc1=2, loc2=4, fc="none", ec="0.5")
+
+    # Adjust font sizes for better readability
+    ax.set_xlabel(f"{xlabel} (τ)", fontsize=18)
+    ax.set_ylabel("Fraction of runs with score > τ", fontsize=18)
+    ax.tick_params(axis="both", which="major", labelsize=12)
+    ax.legend(fontsize=16)
+
     return fig
 
 
@@ -172,19 +212,29 @@ def aggregate_scores(
         color_palette=cc.glasbey_category10,
         xlabel_y_coordinate=-0.5,
     )
+    # Increase figure size for more space
+    fig.set_size_inches(16, 9)  # Increase the figure size as needed (width, height)
+
+    # Manually adjust the layout
+    fig.subplots_adjust(
+        left=0.18,  # Adjust left margin
+        right=0.95,  # Adjust right margin
+        # top=0.6,  # Adjust top margin
+        # bottom=0.1,  # Increase bottom margin for x-label and legend
+    )
 
     # Reformat aggregate scores and aggregate score
     # confidences interval as dictionaries for easier use.
-    aggregate_scores_dict = dict()
+    aggregate_scores_dict = {}
     for algorithm, scores in aggregate_scores.items():
-        algorithm_scores_dict = dict()
+        algorithm_scores_dict = {}
         for metric, metric_value in zip(metric_names, scores):
             algorithm_scores_dict[metric] = metric_value
         aggregate_scores_dict[algorithm] = algorithm_scores_dict
 
-    aggregate_score_cis_dict = dict()
+    aggregate_score_cis_dict = {}
     for algorithm, scores in aggregate_score_cis.items():
-        algorithm_cis_dict = dict()
+        algorithm_cis_dict = {}
         for metric_value_idx, metric in enumerate(metric_names):
             algorithm_cis_dict[metric] = scores[:, metric_value_idx]
         aggregate_score_cis_dict[algorithm] = algorithm_cis_dict
@@ -383,7 +433,7 @@ def sample_efficiency_curves(
         xlabel=xlabel,
         ylabel=ylabel,
         legend=algorithms,
-        figsize=(15, 8),
+        figsize=(16, 9),
         color_palette=cc.glasbey_category10,
     )
 
@@ -455,7 +505,7 @@ def plot_single_task(
         xlabel=xlabel,
         ylabel=ylabel,
         legend=algorithms,
-        figsize=(15, 8),
+        figsize=(16, 9),
         color_palette=cc.glasbey_category10,
         legend_map=legend_map,
         run_times=run_times,

@@ -19,3 +19,6 @@ class TaskConfig:
     lidar_range: float = MISSING
     agent_radius: float = MISSING
     enforce_bounds: bool = MISSING
+    pos_shaping_factor: float = MISSING
+    world_spawning_x: float = MISSING
+    world_spawning_y: float = MISSING

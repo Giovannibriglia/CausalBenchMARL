@@ -28,7 +28,7 @@ def plot_single_task_curve(
     algorithms: list,
     colors: Optional[Dict] = None,
     color_palette: str = "colorblind",
-    figsize: tuple = (7, 5),
+    figsize: tuple = (16, 9),
     xlabel: str = "Number of Frames (in millions)",
     ylabel: str = "Aggregate Human Normalized Score",
     ax: Optional[Axes] = None,
@@ -111,7 +111,7 @@ def plot_single_task_curve(
             x_axis_values, y1=lower, y2=upper, color=colors[algorithm], alpha=0.2
         )
 
-    return _annotate_and_decorate_axis(
+    ax = _annotate_and_decorate_axis(
         ax,
         xlabel=xlabel,
         ylabel=ylabel,
@@ -119,3 +119,6 @@ def plot_single_task_curve(
         ticklabelsize=ticklabelsize,
         **kwargs,
     )
+
+    plt.tight_layout()  # This will adjust the layout to fit the labels
+    return ax

@@ -7,7 +7,7 @@
 import os
 from pathlib import Path
 
-from benchmarl.algorithms import MappoConfig
+from benchmarl.algorithms import IppoConfig, MappoConfig
 from benchmarl.environments import VmasTask
 from benchmarl.experiment import Experiment, ExperimentConfig
 from benchmarl.models.mlp import MlpConfig
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     experiment_config.max_n_iters = 3
 
     task = VmasTask.BALANCE.get_from_yaml()
-    algorithm_config = MappoConfig.get_from_yaml()
+    algorithm_config = IppoConfig.get_from_yaml()
     model_config = MlpConfig.get_from_yaml()
     critic_model_config = MlpConfig.get_from_yaml()
     experiment = Experiment(
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     experiment_config.save_folder = None
     # Let's do 3 more iters
     experiment_config.max_n_iters += 3
-
+    experiment_config.render = True
     experiment = Experiment(
         algorithm_config=algorithm_config,
         model_config=model_config,

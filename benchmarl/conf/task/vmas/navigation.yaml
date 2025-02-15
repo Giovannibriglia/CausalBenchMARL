@@ -4,8 +4,12 @@ defaults:
 
 
 
-max_steps: 100
+max_steps: 1000
 n_agents: 3
+pos_shaping_factor: 0.0
+world_spawning_x: 1.0
+world_spawning_y: 1.0
+enforce_bounds: True
 collisions: True
 agents_with_same_goal: 1
 split_goals: False
@@ -13,4 +17,3 @@ observe_all_goals: False
 shared_rew: False
 lidar_range: 0.35
 agent_radius: 0.1
-enforce_bounds: True

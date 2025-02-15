@@ -1,23 +1,22 @@
 import itertools
-from typing import Dict, Tuple, List, Any, Union
-import multiprocessing
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from typing import Dict, List, Tuple, Union
+
 import networkx as nx
 import numpy as np
 import pandas as pd
-import psutil
 from pgmpy.estimators import MaximumLikelihoodEstimator
 from pgmpy.factors.discrete import TabularCPD
 from pgmpy.inference import CausalInference
 from pgmpy.models import BayesianNetwork
-import os
-import logging
-
 from torch import Tensor
 
-from benchmarl.models._labels import LABEL_kind_group_var, LABEL_reward_action_values, LABEL_discrete_intervals, \
-    LABEL_grouped_features, LABEL_value_group_var
-from tqdm import tqdm
+from benchmarl.models._labels import (
+    LABEL_discrete_intervals,
+    LABEL_grouped_features,
+    LABEL_kind_group_var,
+    LABEL_reward_action_values,
+    LABEL_value_group_var,
+)
 
 
 def list_to_graph(graph: list) -> nx.DiGraph:
@@ -30,8 +29,6 @@ def list_to_graph(graph: list) -> nx.DiGraph:
 
     return dg
 
-
-" ******************************************************************************************************************** "
 
 def values_to_bins(values: List[float], intervals: List[float]) -> List[int]:
     # Sort intervals to ensure they are in ascending order
@@ -55,7 +52,7 @@ def values_to_bins(values: List[float], intervals: List[float]) -> List[int]:
 
 def discretize_value(value: int | float | Tensor, intervals: List) -> int | float:
     if isinstance(value, Tensor):
-        value = value.to('cpu')
+        value = value.to("cpu")
     idx = np.digitize(value, intervals, right=False)
     if idx == 0:
         return intervals[0]
@@ -68,13 +65,15 @@ def discretize_value(value: int | float | Tensor, intervals: List) -> int | floa
             return intervals[idx]
 
 
-def _create_intervals(min_val: int | float, max_val: int | float, n_intervals: int, scale='linear') -> List:
-    if scale == 'exponential':
+def _create_intervals(
+    min_val: int | float, max_val: int | float, n_intervals: int, scale="linear"
+) -> List:
+    if scale == "exponential":
         # Generate n_intervals points using exponential scaling
         intervals = np.logspace(0, 1, n_intervals, base=10) - 1
         intervals = intervals / (10 - 1)  # Normalize to range 0-1
         intervals = min_val + (max_val - min_val) * intervals
-    elif scale == 'linear':
+    elif scale == "linear":
         intervals = np.linspace(min_val, max_val, n_intervals)
     else:
         raise ValueError("Unsupported scale type. Use 'exponential' or 'linear'.")
@@ -82,7 +81,12 @@ def _create_intervals(min_val: int | float, max_val: int | float, n_intervals: i
     return list(intervals)
 
 
-def discretize_dataframe(df: pd.DataFrame, n_bins: int = 50, scale='linear', not_discretize_these: List = None):
+def discretize_dataframe(
+    df: pd.DataFrame,
+    n_bins: int = 50,
+    scale="linear",
+    not_discretize_these: List = None,
+):
     discrete_df = df.copy()
     variable_discrete_intervals = {}
     for column in df.columns:
@@ -91,12 +95,16 @@ def discretize_dataframe(df: pd.DataFrame, n_bins: int = 50, scale='linear', not
             max_value = df[column].max()
             intervals = _create_intervals(min_value, max_value, n_bins, scale)
             variable_discrete_intervals[column] = intervals
-            discrete_df[column] = df[column].apply(lambda x: discretize_value(x, intervals))
+            discrete_df[column] = df[column].apply(
+                lambda x: discretize_value(x, intervals)
+            )
             # discrete_df[column] = np.vectorize(lambda x: intervals[_discretize_value(x, intervals)])(df[column])
     return discrete_df, variable_discrete_intervals
 
 
-def group_row_variables(input_obs: Union[Dict, List], variable_columns: list, N: int = 1) -> Dict:
+def group_row_variables(
+    input_obs: Union[Dict, List], variable_columns: list, N: int = 1
+) -> Dict:
     obs = input_obs.copy()
 
     if isinstance(obs, list):
@@ -111,22 +119,22 @@ def group_row_variables(input_obs: Union[Dict, List], variable_columns: list, N:
 
     for i, (variable_name, variable_value) in enumerate(sorted_variables):
         try:
-            variable_number = ''.join(filter(str.isdigit, str(variable_name)))
-            obs_grouped[f'{LABEL_kind_group_var}_{i}'] = int(variable_number)
-            obs_grouped[f'{LABEL_value_group_var}_{i}'] = variable_value
+            variable_number = "".join(filter(str.isdigit, str(variable_name)))
+            obs_grouped[f"{LABEL_kind_group_var}_{i}"] = int(variable_number)
+            obs_grouped[f"{LABEL_value_group_var}_{i}"] = variable_value
             # Remove the grouped part from the original observation
             if not is_list:
                 del obs[variable_name]
             else:
                 obs[variable_columns[i]] = None
         except (IndexError, ValueError):
-            obs_grouped[f'{LABEL_kind_group_var}_{i}'] = None
-            obs_grouped[f'{LABEL_value_group_var}_{i}'] = None
+            obs_grouped[f"{LABEL_kind_group_var}_{i}"] = None
+            obs_grouped[f"{LABEL_value_group_var}_{i}"] = None
 
     # Add empty groups if N is greater than the number of sorted variables
     for i in range(len(sorted_variables), N):
-        obs_grouped[f'{LABEL_kind_group_var}_{i}'] = None
-        obs_grouped[f'{LABEL_value_group_var}_{i}'] = None
+        obs_grouped[f"{LABEL_kind_group_var}_{i}"] = None
+        obs_grouped[f"{LABEL_value_group_var}_{i}"] = None
 
     # Remove the variable_columns from the original observation
     if not is_list:
@@ -144,7 +152,10 @@ def _navigation_inverse_approximation(input_obs: Dict, **kwargs) -> Dict:
     n_groups, features_group = kwargs[LABEL_grouped_features]  # 2, [obs4-ob5-...]
     obs_grouped = group_row_variables(input_obs, features_group, n_groups)
     discrete_intervals = kwargs[LABEL_discrete_intervals]
-    final_obs = {key: discretize_value(value, discrete_intervals[key]) for key, value in obs_grouped.items()}
+    final_obs = {
+        key: discretize_value(value, discrete_intervals[key])
+        for key, value in obs_grouped.items()
+    }
 
     return final_obs
 
@@ -154,7 +165,10 @@ def _discovery_inverse_approximation(input_obs: Dict, **kwargs) -> Dict:
     obs_grouped = group_row_variables(input_obs, features_group, n_groups)
 
     discrete_intervals = kwargs[LABEL_discrete_intervals]
-    final_obs = {key: discretize_value(value, discrete_intervals[key]) for key, value in obs_grouped.items()}
+    final_obs = {
+        key: discretize_value(value, discrete_intervals[key])
+        for key, value in obs_grouped.items()
+    }
 
     return final_obs
 
@@ -163,34 +177,44 @@ def _flocking_inverse_approximation(input_obs: Dict, **kwargs) -> Dict:
     n_groups, features_group = kwargs[LABEL_grouped_features]  # 2, [obs4-ob5-...]
     obs_grouped = group_row_variables(input_obs, features_group, n_groups)
     discrete_intervals = kwargs[LABEL_discrete_intervals]
-    final_obs = {key: discretize_value(value, discrete_intervals[key]) for key, value in obs_grouped.items()}
+    final_obs = {
+        key: discretize_value(value, discrete_intervals[key])
+        for key, value in obs_grouped.items()
+    }
     return final_obs
+
 
 def _give_way_inverse_approximation(input_obs: Dict, **kwargs) -> Dict:
     discrete_intervals = kwargs[LABEL_discrete_intervals]
-    final_obs = {key: discretize_value(value, discrete_intervals[key]) for key, value in input_obs.items()}
+    final_obs = {
+        key: discretize_value(value, discrete_intervals[key])
+        for key, value in input_obs.items()
+    }
     return final_obs
 
 
 def inverse_approximation_function(task: str):
-    if task == 'navigation':
+    if task == "navigation":
         return _navigation_inverse_approximation
-    elif task == 'discovery':
+    elif task == "discovery":
         return _discovery_inverse_approximation
-    elif task == 'flocking':
+    elif task == "flocking":
         return _flocking_inverse_approximation
-    elif task == 'give_way':
+    elif task == "give_way":
         return _give_way_inverse_approximation
     # TODO: others
     else:
-        raise NotImplementedError("The inverse approximation function for this task has not been implemented")
+        raise NotImplementedError(
+            "The inverse approximation function for this task has not been implemented"
+        )
+
 
 def dict_to_bn(model_data) -> BayesianNetwork:
     model = BayesianNetwork()
     model.add_nodes_from(model_data["nodes"])
     model.add_edges_from(model_data["edges"])
 
-    for variable, cpd_data in model_data["cpds"].items():
+    for _, cpd_data in model_data["cpds"].items():
         variable_card = cpd_data["variable_card"]
         evidence_card = cpd_data["evidence_card"]
 
@@ -206,12 +230,13 @@ def dict_to_bn(model_data) -> BayesianNetwork:
             values=values.tolist(),
             evidence=cpd_data["evidence"],
             evidence_card=evidence_card,
-            state_names=cpd_data["state_names"]
+            state_names=cpd_data["state_names"],
         )
         model.add_cpds(cpd)
 
     model.check_model()
     return model
+
 
 def extract_intervals_from_bn(model: BayesianNetwork):
     intervals_dict = {}
@@ -222,7 +247,7 @@ def extract_intervals_from_bn(model: BayesianNetwork):
             intervals_dict[node] = cpd.state_names[node]
     return intervals_dict
 
-" ******************************************************************************************************************** "
+
 def check_values_in_states(known_states, observation, evidence):
     not_in_observation = {}
     not_in_evidence = {}
@@ -232,14 +257,14 @@ def check_values_in_states(known_states, observation, evidence):
         evid_value = evidence.get(state, None)
 
         if obs_value is not None and obs_value not in values:
-            print('*** ERROR ****')
+            print("*** ERROR ****")
             print(state)
             print(values)
             print(obs_value)
             not_in_observation[state] = obs_value
 
         if evid_value is not None and evid_value not in values:
-            print('*** ERROR ****')
+            print("*** ERROR ****")
             print(state)
             print(values)
             print(evid_value)
@@ -251,17 +276,20 @@ def check_values_in_states(known_states, observation, evidence):
     if not_in_evidence != {}:
         print("\nValues not in evidence: ", not_in_evidence)
 
+
 " ******************************************************************************************************************** "
 
 
 class SingleCausalInference:
-    def __init__(self, df: pd.DataFrame, causal_graph: nx.DiGraph, dict_init_cbn: Dict = None):
+    def __init__(
+        self, df: pd.DataFrame, causal_graph: nx.DiGraph, dict_init_cbn: Dict = None
+    ):
         self.df = df
         self.causal_graph = causal_graph
         self.features = self.causal_graph.nodes
 
         if dict_init_cbn is None and (df is None and causal_graph is None):
-            raise ImportError('dataframe - causal graph - bayesian network are None')
+            raise ImportError("dataframe - causal graph - bayesian network are None")
 
         if dict_init_cbn is None:
             self.cbn = BayesianNetwork()
@@ -286,11 +314,19 @@ class SingleCausalInference:
                 intervals_dict[node] = cpd.state_names[node]
         return intervals_dict
 
-    def infer(self, input_dict_do: Dict, target_variable: str, evidence=None, adjustment_set=None) -> Dict:
+    def infer(
+        self,
+        input_dict_do: Dict,
+        target_variable: str,
+        evidence=None,
+        adjustment_set=None,
+    ) -> Dict:
         # print(f'infer: {input_dict_do} - {target_variable}')
 
         # Ensure the target variable is not in the evidence
-        input_dict_do_ok = {k: v for k, v in input_dict_do.items() if k != target_variable}
+        input_dict_do_ok = {
+            k: v for k, v in input_dict_do.items() if k != target_variable
+        }
 
         # print(f'Cleaned input (evidence): {input_dict_do_ok}')
         # print(f'Target variable: {target_variable}')
@@ -299,7 +335,9 @@ class SingleCausalInference:
             # Compute an adjustment set if not provided
             do_vars = [var for var, state in input_dict_do_ok.items()]
             adjustment_set = set(
-                itertools.chain(*[self.causal_graph.predecessors(var) for var in do_vars])
+                itertools.chain(
+                    *[self.causal_graph.predecessors(var) for var in do_vars]
+                )
             )
             # print(f'Computed adjustment set: {adjustment_set}')
         else:
@@ -313,13 +351,15 @@ class SingleCausalInference:
             do=input_dict_do_ok,
             evidence=input_dict_do_ok if evidence is None else evidence,
             adjustment_set=adjustment_set,
-            show_progress=False
+            show_progress=False,
         )
         # print(f'Query result: {query_result}')
 
         # Convert DiscreteFactor to a dictionary
-        result_dict = {str(state): float(query_result.values[idx]) for idx, state in
-                       enumerate(query_result.state_names[target_variable])}
+        result_dict = {
+            str(state): float(query_result.values[idx])
+            for idx, state in enumerate(query_result.state_names[target_variable])
+        }
         # print(f'Result distributions: {result_dict}')
 
         return result_dict
@@ -347,7 +387,9 @@ class SingleCausalInference:
                         return True
             else:
                 print(f"Unsupported data type: {type(data)}")
-                return True  # Return True to signal an issue if data type is unsupported
+                return (
+                    True  # Return True to signal an issue if data type is unsupported
+                )
             return False
 
         # Check the input data
@@ -360,9 +402,16 @@ class SingleCausalInference:
 
 
 class CausalInferenceForRL:
-    def __init__(self, online: bool, df_train: pd.DataFrame, causal_graph: nx.DiGraph,
-                 bn_dict: Dict = None, causal_table: pd.DataFrame = None,
-                 obs_train_to_test=None, grouped_features: Tuple = None):
+    def __init__(
+        self,
+        online: bool,
+        df_train: pd.DataFrame,
+        causal_graph: nx.DiGraph,
+        bn_dict: Dict = None,
+        causal_table: pd.DataFrame = None,
+        obs_train_to_test=None,
+        grouped_features: Tuple = None,
+    ):
 
         self.online = online
 
@@ -380,9 +429,13 @@ class CausalInferenceForRL:
 
         self.grouped_features = grouped_features
 
-        self.reward_variable = [s for s in self.df_train.columns.to_list() if 'reward' in s][0]
+        self.reward_variable = [
+            s for s in self.df_train.columns.to_list() if "reward" in s
+        ][0]
         self.reward_values = self.df_train[self.reward_variable].unique().tolist()
-        self.action_variable = [s for s in self.df_train.columns.to_list() if 'action' in s][0]
+        self.action_variable = [
+            s for s in self.df_train.columns.to_list() if "action" in s
+        ][0]
         self.action_values = self.df_train[self.action_variable].unique().tolist()
 
         self.causal_table = causal_table
@@ -390,7 +443,7 @@ class CausalInferenceForRL:
     def _single_query(self, obs: Dict) -> Dict:
         def get_action_distribution(reward_value):
             # Create a new evidence dictionary by merging obs with the current reward_value
-            evidence = {**obs, f'{self.reward_variable}': reward_value}
+            evidence = {**obs, f"{self.reward_variable}": reward_value}
             # Check the values in the states
             check_values_in_states(self.ci.cbn.states, obs, evidence)
             # Infer the action distribution based on the evidence
@@ -417,7 +470,7 @@ class CausalInferenceForRL:
         reward_action_values = self._single_query(obs)
 
         row_result = obs.copy()
-        row_result[f'{LABEL_reward_action_values}'] = reward_action_values
+        row_result[f"{LABEL_reward_action_values}"] = reward_action_values
 
         return row_result
 
@@ -427,7 +480,6 @@ class CausalInferenceForRL:
 
         return reward_action_values
 
-
     def _process_combination(self, combination: Dict) -> Dict:
         # initial_time = time.time()
         try:
@@ -436,6 +488,3 @@ class CausalInferenceForRL:
             raise ValueError(e)
 
         return reward_action_values
-
-
-
