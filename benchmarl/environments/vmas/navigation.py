@@ -20,3 +20,4 @@ class TaskConfig:
     agent_radius: float = MISSING
     enforce_bounds: bool = MISSING
     final_reward: float = MISSING
+    pos_shaping_factor: float = MISSING
