@@ -19,3 +19,4 @@ class TaskConfig:
     lidar_range: float = MISSING
     agent_radius: float = MISSING
     enforce_bounds: bool = MISSING
+    final_reward: float = MISSING
