@@ -81,8 +81,9 @@ def load_and_merge_json_dicts(
 
     dicts = []
     for file in json_input_files:
-        with open(file, "r") as f:
-            dicts.append(json.load(f))
+        if "wandb" not in file and task in file:
+            with open(file, "r") as f:
+                dicts.append(json.load(f))
     full_dict = {}
     for single_dict in dicts:
         update(full_dict, single_dict)
@@ -180,10 +181,11 @@ class Plotting:
 
 
 if __name__ == "__main__":
-    task = "navigation_and_give_way"
+    task = "give_way"
 
     # Define the source and destination paths
-    source_folder = rf"C:\Users\giova\Documents\Research\BenchMARL\multirun\{task}"
+    # source_folder = rf"C:\Users\giova\Documents\Research\BenchMARL\multirun\{task}"
+    source_folder = rf"C:\Users\giova\Documents\Research\BenchMARL\multirun\17-52-23"
 
     raw_dict = get_raw_dict_from_multirun_folder(multirun_folder=source_folder)
 
@@ -203,13 +205,13 @@ if __name__ == "__main__":
         sample_effeciency_matrix=sample_efficiency_matrix
     )
 
-    if (
+    """if (
         task != "complete"
         and task != "navigation_and_flocking"
         and task != "navigation_and_give_way"
     ):
         Plotting.task_sample_efficiency_curves(
             processed_data=processed_data, env="vmas", task=task
-        )
+        )"""
 
     plt.show()

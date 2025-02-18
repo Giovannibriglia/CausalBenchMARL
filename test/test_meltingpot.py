@@ -16,7 +16,6 @@ from benchmarl.algorithms import (
 from benchmarl.algorithms.common import AlgorithmConfig
 from benchmarl.environments import MeltingPotTask, Task
 from benchmarl.experiment import Experiment
-
 from utils import _has_meltingpot
 from utils_experiment import ExperimentUtils
 

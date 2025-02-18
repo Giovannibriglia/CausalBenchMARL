@@ -4,7 +4,7 @@ torchrl~=0.5.0
 numpy~=1.26.4
 wandb~=0.18.1
 gym~=0.26.2
-pyglet~=1.5.27
+pyglet<=1.5.27
 six~=1.16.0
 tensordict~=0.5.0
 networkx~=3.3
@@ -22,3 +22,4 @@ colorcet~=3.1.0
 seaborn~=0.13.2
 rliable~=1.0.8
 setuptools~=70.0.0
+PyAV

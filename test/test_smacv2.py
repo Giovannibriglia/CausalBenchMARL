@@ -11,7 +11,6 @@ from benchmarl.algorithms import algorithm_config_registry, MappoConfig, QmixCon
 from benchmarl.algorithms.common import AlgorithmConfig
 from benchmarl.environments import Smacv2Task
 from benchmarl.experiment import Experiment
-
 from utils import _has_smacv2
 
 

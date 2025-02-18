@@ -3,7 +3,6 @@
 #  This source code is licensed under the license found in the
 #  LICENSE file in the root directory of this source tree.
 #
-import json
 import os
 from pathlib import Path
 from typing import List
@@ -27,7 +26,7 @@ def run_benchmark() -> List[str]:
     experiment_config.max_n_iters = 100
 
     # Configure benchmark
-    tasks = [VmasTask.NAVIGATION.get_from_yaml()]
+    tasks2 = [VmasTask.NAVIGATION.get_from_yaml()]
     algorithm_configs = [
         MappoConfig.get_from_yaml(),
         QmixConfig.get_from_yaml(),
@@ -37,7 +36,7 @@ def run_benchmark() -> List[str]:
 
     benchmark = Benchmark(
         algorithm_configs=algorithm_configs,
-        tasks=tasks,
+        tasks=tasks2,
         seeds={0, 1},
         experiment_config=experiment_config,
         model_config=model_config,
@@ -57,20 +56,27 @@ def run_benchmark() -> List[str]:
 
 
 if __name__ == "__main__":
-    experiment_json_files = []
-    folder_path = "../running/"
-    key1 = "causaliql_give_way_causalmlp"
-    key2 = "iql_give_way_mlp"
+    folder_results = "../../multirun/complete"
+    tasks_names = [
+        # "flocking",
+        # "give_way",
+        "navigation",
+    ]
+    algo_names = ["iql", "causaliql", "qmix", "causalqmix", "vdn", "causalvdn"]
 
-    # Walk through the folder and subfolders
-    for root, dirs, files in os.walk(folder_path):
-        for file_name in files:
-            if (file_name.endswith(".json") and key1 in file_name) or (
-                file_name.endswith(".json") and key2 in file_name
-            ):
-                # Get the full file path
-                full_path = os.path.join(root, file_name)
-                experiment_json_files.append(full_path)
+    experiment_json_files = []
+
+    # Iterate through the directory structure
+    for root, dirs, files in os.walk(folder_results):
+        for file in files:
+            # Check if the file is a JSON file
+            if file.endswith(".json"):
+                # Check if the file name contains any combination of tasks_names and algo_names
+                if any(task in file for task in tasks_names) and any(
+                    algo in file for algo in algo_names
+                ):
+                    # If both conditions are met, add the file to the list with full path
+                    experiment_json_files.append(os.path.join(root, file))
 
     # Uncomment this to rerun the benchmark that generates the files
     # experiment_json_files = run_benchmark()
@@ -93,14 +99,15 @@ if __name__ == "__main__":
     Plotting.environemnt_sample_efficiency_curves(
         sample_effeciency_matrix=sample_efficiency_matrix
     )
-    Plotting.task_sample_efficiency_curves(
-        processed_data=processed_data, env="vmas", task="give_way"
-    )
+    """Plotting.task_sample_efficiency_curves(
+        processed_data=processed_data, env="vmas", task=tasks_names
+    )"""
+
     try:
         Plotting.probability_of_improvement(
             environment_comparison_matrix,
-            algorithms_to_compare=[["causaliql", "iql"]],
+            algorithms_to_compare=[algo_names],
         )
-    except:
+    except Exception as e:
         pass
     plt.show()

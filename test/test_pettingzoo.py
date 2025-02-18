@@ -18,7 +18,6 @@ from benchmarl.algorithms import (
 from benchmarl.algorithms.common import AlgorithmConfig
 from benchmarl.environments import PettingZooTask, Task
 from benchmarl.experiment import Experiment
-
 from utils import _has_pettingzoo
 from utils_experiment import ExperimentUtils
 
